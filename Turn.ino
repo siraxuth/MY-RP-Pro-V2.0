@@ -88,21 +88,11 @@ void tl(int speed)
   Motor(0, speed);
 }
 
-void TL(int speed)
-{
-  Motor(0, speed);
-}
-
 // =============================================================================
 //  ฟังก์ชันพื้นฐาน - เลี้ยวขวา (Turn Right - ล้อข้างหนึ่งหมุน)
 // =============================================================================
 
 void tr(int speed)
-{
-  Motor(speed, 0);
-}
-
-void TR(int speed)
 {
   Motor(speed, 0);
 }
@@ -115,16 +105,7 @@ void Left(int speed, int time)
 {
   Motor(0, 0);
   delay(5);
-
-  if (WheelDrive == 0)
-  {
-    sl(speed);
-  }
-  else
-  {
-    SL(speed);
-  }
-
+  sl(speed);
   delay(time);
   Motor(0, 0);
 }
@@ -137,16 +118,7 @@ void Right(int speed, int time)
 {
   Motor(0, 0);
   delay(5);
-
-  if (WheelDrive == 0)
-  {
-    sr(speed);
-  }
-  else
-  {
-    SR(speed);
-  }
-
+  sr(speed);
   delay(time);
   Motor(0, 0);
 }
@@ -157,14 +129,7 @@ void Right(int speed, int time)
 
 void TurnLeftDelay(int speed, int time)
 {
-  if (WheelDrive == 0)
-  {
-    tl(speed);
-  }
-  else
-  {
-    TL(speed);
-  }
+  tl(speed);
   delay(time);
 }
 
@@ -174,14 +139,7 @@ void TurnLeftDelay(int speed, int time)
 
 void TurnRightDelay(int speed, int time)
 {
-  if (WheelDrive == 0)
-  {
-    tr(speed);
-  }
-  else
-  {
-    TR(speed);
-  }
+  tr(speed);
   delay(time);
 }
 
