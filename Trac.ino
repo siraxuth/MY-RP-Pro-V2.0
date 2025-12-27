@@ -6,7 +6,6 @@
  *  ฟังก์ชันหลัก:
  *    TracJC()        - เดินจนเจอแยก
  *    TracJCSpeed()   - เดินเร็วจนเจอแยก
- *    TJCSS(n)        - เดินผ่าน n แยก
  * =============================================================================
  */
 
@@ -181,61 +180,6 @@ void TracJCSpeedTime(int MotorSpeed, int TimeDelay) {
   delay(TimeDelay);
   BaseSpeed = Speed;
   InitialSpeed();
-}
-
-
-// =============================================================================
-//  TJCSS Functions
-// =============================================================================
-
-void TJCSS(int line) {
-  for (int i = 0; i < line; i++) {
-    TracJCSpeed();
-  }
-  TracJC();
-  MotorStop();
-}
-
-void TJCSS() { TJCSS(1); }
-
-void TJCSSL(int line) {
-  for (int i = 0; i < line; i++) {
-    TracJCSpeed();
-  }
-  TracJCSlow();
-  MotorStop();
-}
-
-void TJCSSL() { TJCSSL(1); }
-
-void TJCSSL2(int line) {
-  for (int i = 0; i < line; i++) {
-    TracJC();
-  }
-  TracJCSlow();
-  MotorStop();
-}
-
-void TJCSSL2() { TJCSSL2(1); }
-
-void TJCSSA(int line, int Tracs) {
-  for (int i = 0; i < line; i++) {
-    TracJCSpeed();
-  }
-  for (int a = 0; a < Tracs; a++) {
-    TracJC();
-  }
-  MotorStop();
-}
-
-void TJCSSB(int line, int Tracc) {
-  for (int i = 0; i < line; i++) {
-    TracJCSpeed();
-  }
-  for (int a = 0; a < Tracc; a++) {
-    TracJCSlow();
-  }
-  MotorStop();
 }
 
 

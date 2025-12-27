@@ -4,6 +4,8 @@
  * =============================================================================
  */
 
+
+
 // อ่านค่า ADC จาก MCP3008
 uint16_t read_ADC(int cs_pin, int channel) {
   digitalWrite(cs_pin, LOW);

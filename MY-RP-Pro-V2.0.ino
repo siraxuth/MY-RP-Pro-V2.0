@@ -3,7 +3,7 @@
  *  MyRobot Complete V2 - รวมโค้ดสำเร็จรูป
  * =============================================================================
  *  รองรับ: RP2350 Pro Board
- *  
+ *
  *  ไฟล์ในโปรเจค:
  *    - MyRobot_Complete.ino : ไฟล์หลัก + ตั้งค่า
  *    - Motor.ino            : ควบคุมมอเตอร์ + ฟังก์ชันจูน
@@ -34,37 +34,36 @@ float LINE_KP = 0.45;
 float LINE_KI = 0.0001;
 float LINE_KD = 0.025;
 
-
 // =============================================================================
 //  ส่วนที่ 2: ตั้งค่า Servo แขนกล
 // =============================================================================
 
-int servo_down   = 50;    // องศาแขนลง (ต่ำสุด)
-int servo_cm_2   = 70;    // องศายกระดับ 2 เซน
-int servo_cm_3   = 90;    // องศายกระดับ 3 เซน
-int servo_cm_4   = 110;   // องศายกระดับ 4 เซน
-int servo_cm_5   = 130;   // องศายกระดับ 5 เซน (สูงสุด)
-int servoL_open  = 120;   // องศากรงเล็บซ้ายเปิด
-int servoR_open  = 125;   // องศากรงเล็บขวาเปิด
-int servo_trim34 = -5;    // ค่าชดเชย servo 34
-int servo_trim35 = 0;     // ค่าชดเชย servo 35
-int servo_trim36 = 0;     // ค่าชดเชย servo 36
-
+int servo_down = 50;   // องศาแขนลง (ต่ำสุด)
+int servo_up = 150;    // องศาแขนลง (ต่ำสุด)
+int servo_cm_2 = 70;   // องศายกระดับ 2 เซน
+int servo_cm_3 = 90;   // องศายกระดับ 3 เซน
+int servo_cm_4 = 110;  // องศายกระดับ 4 เซน
+int servo_cm_5 = 130;  // องศายกระดับ 5 เซน (สูงสุด)
+int servoL_open = 120; // องศากรงเล็บซ้ายเปิด
+int servoR_open = 125; // องศากรงเล็บขวาเปิด
+int servo_trim34 = -5; // ค่าชดเชย servo 34
+int servo_trim35 = 0;  // ค่าชดเชย servo 35
+int servo_trim36 = 0;  // ค่าชดเชย servo 36
 
 // =============================================================================
 //  ส่วนที่ 3: ตั้งค่าเบรค
 // =============================================================================
 
-int BRAKE_TIME   = 10;
-int BRAKE_POWER  = 20;
-
+int BRAKE_TIME = 10;
+int BRAKE_POWER = 20;
 
 // =============================================================================
 //  ส่วนที่ 4: ตั้งค่ามอเตอร์
 // =============================================================================
 
-String MOTOR_TYPE = "Coreless_Motors";  // "Coreless_Motors" หรือ "DC_Motors"
-
+String MOTOR_TYPE = "Coreless_Motors"; // "Coreless_Motors" หรือ "DC_Motors"
+int TurnSpeed, BrakeSpeed, BrakeTime, WheelDrive;
+int turn_delay_90, turn_delay_180;
 
 // =============================================================================
 //  ส่วนที่ 5: Pin Definitions
@@ -102,7 +101,7 @@ int rgb[] = {24, 25, 28};
 #define SERVO_34 34
 
 // ADC Pins (MCP3008)
-#define ADC_CLK  14
+#define ADC_CLK 14
 #define ADC_MISO 15
 #define ADC_MOSI 16
 #define ADC_CS_A 13
@@ -114,7 +113,6 @@ int rgb[] = {24, 25, 28};
 
 // EEPROM
 #define EEPROM_ADDRESS 0x50
-
 
 // =============================================================================
 //  ส่วนที่ 6: Global Variables
@@ -138,7 +136,7 @@ float _integral = 0.0;
 float _absoluteAngle = 0.0;
 
 // Motor Offset (จะถูกตั้งค่าจากฟังก์ชัน tuning)
-int MOTOR_LEFT_OFFSET  = 0;
+int MOTOR_LEFT_OFFSET = 0;
 int MOTOR_RIGHT_OFFSET = 0;
 
 // Sensor Variables
@@ -174,64 +172,77 @@ float s35_before_deg = 120;
 float s36_before_deg = 50;
 int num_steps = 20;
 
-
 // =============================================================================
 //  ส่วนที่ 7: Setup & Loop
 // =============================================================================
 
-void setup() {
+void setup()
+{
+  // =============================================================================
+  //  ค่าตั้งต่างๆ สำหรับ Turn
+  // =============================================================================
+
+  TurnSpeed = 50;   // ความเร็วเลี้ยวเริ่มต้น
+  BrakeSpeed = 100; // ความเร็วเบรค
+  BrakeTime = 30;   // เวลาเบรค (ms)
+  WheelDrive = 0;   // 0 = 2WD, 1 = 4WD
+
+  // Delay สำหรับเลี้ยว (ปรับตาม TurnSpeed)
+  turn_delay_90 = 8000;   // delay = turn_delay_90 / TurnSpeed
+  turn_delay_180 = 23000; // delay = turn_delay_180 / TurnSpeed
+
   Serial.begin(115200);
   setup_robot();
-  
+
   // ตั้งค่าแขนกล
-  arm_down_open();
+  // arm_down_open();
+  arm_cm_open();
   arm_l_r(120, 120, 50);
-  
+
   // รอกดปุ่มเริ่ม
   sw();
-  
+
   //==========================================================================
   //  ใส่คำสั่งตรงนี้!
   //==========================================================================
-  
+
   /*
    * ===== รูปแบบคำสั่งใหม่ =====
-   * 
+   *
    * เดินหน้า/ถอยหลัง:
    *   Forward(speed, kp, delayMs);      // เดินหน้า
    *   Backward(speed, kp, delayMs);     // ถอยหลัง
-   *   
+   *
    *   ตัวอย่าง:
    *   Forward(50, 1.5, 500);   // เดินหน้า speed=50, kp=1.5, 500ms
    *   Backward(40, 1.2, 300);  // ถอยหลัง speed=40, kp=1.2, 300ms
-   * 
+   *
    * หมุนตัว:
    *   SpinDegree(speed, degree, mode);
-   *   
+   *
    *   Mode 0 = Relative (รีค่าหลังเลี้ยว)
    *   Mode 1 = Absolute (0=หน้า, 90=ขวา, 180=หลัง, 270=ซ้าย)
-   *   
+   *
    *   ตัวอย่าง:
    *   SpinDegree(30, 90, 0);   // หมุนขวา 90° แบบ Relative
    *   SpinDegree(30, -90, 0);  // หมุนซ้าย 90° แบบ Relative
-   *   
+   *
    *   SetHeading(0);            // ตั้งทิศหน้าเป็น 0
    *   TurnToHeading(30, 90);    // หมุนไปทิศขวา (Absolute)
-   * 
+   *
    * เดินตามเส้น:
    *   TracJC();        // เดินจนเจอแยก
    *   TracJCSpeed();   // เดินเร็วจนเจอแยก
    *   TJCSS(3);        // เดินผ่าน 3 แยก
-   * 
+   *
    * เดินตรงด้วย Gyro:
    *   TracDegreeSpeedTime(speed, degree, delayMs, mode);
    */
-  
-  
+
   //==========================================================================
 }
 
-void loop() {
+void loop()
+{
   // ใส่โค้ดที่ต้องการรันซ้ำๆ
-  
 }
