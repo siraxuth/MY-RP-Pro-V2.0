@@ -537,6 +537,174 @@ void loop() {
 
 ---
 
+## 📐 ฟังก์ชันเดินตามระยะทาง (CM)
+
+ฟังก์ชันเหล่านี้ช่วยให้สั่งหุ่นยนต์เดินตามระยะทางที่แม่นยำเป็นเซนติเมตร โดยใช้การคำนวณจากขนาดล้อและความเร็ว
+
+### 🔧 การตั้งค่า Calibration
+
+ก่อนใช้งาน ต้องตั้งค่าขนาดล้อในไฟล์หลัก:
+
+```cpp
+// ตั้งค่าขนาดล้อ (วัดรวมยางด้วย!)
+float WHEEL_DIAMETER_MM = 42.0;    // เส้นผ่านศูนย์กลางล้อ (mm)
+float WHEEL_BASE_MM = 120.0;       // ระยะห่างระหว่างล้อซ้าย-ขวา (mm)
+float SPEED_TO_MMPS = 3.0;         // ค่า calibrate (mm ต่อ speed ต่อวินาที)
+float CM_CORRECTION_FACTOR = 1.0;  // ตัวแก้ไขระยะ (1.0 = ไม่แก้)
+```
+
+> ⚠️ **สำคัญ:** การวัด WHEEL_DIAMETER_MM ต้อง**รวมยาง**ของล้อด้วย เพราะยางคือส่วนที่สัมผัสพื้นจริง
+
+### 📊 สูตรการคำนวณ
+
+```
+เส้นรอบวงล้อ = π × เส้นผ่านศูนย์กลาง
+ความเร็ว (mm/s) = speed × SPEED_TO_MMPS
+เวลา (ms) = (ระยะทาง_mm / ความเร็ว_mm/s) × 1000
+```
+
+### 🚀 ฟังก์ชันหลัก
+
+<table>
+<tr>
+<th>ฟังก์ชัน</th>
+<th>คำอธิบาย</th>
+<th>ตัวอย่าง</th>
+</tr>
+
+<tr>
+<td colspan="3"><strong>🏃 เดินหน้า/ถอยหลัง</strong></td>
+</tr>
+<tr>
+<td><code>ForwardCM(speed, cm)</code></td>
+<td>เดินหน้าตามระยะ cm (ไม่ใช้ Gyro)</td>
+<td><code>ForwardCM(50, 15);</code></td>
+</tr>
+<tr>
+<td><code>ForwardCM(speed, cm, kp)</code></td>
+<td>เดินหน้าตามระยะ cm (ใช้ Gyro)</td>
+<td><code>ForwardCM(50, 30, 0.5);</code></td>
+</tr>
+<tr>
+<td><code>BackwardCM(speed, cm)</code></td>
+<td>ถอยหลังตามระยะ cm</td>
+<td><code>BackwardCM(40, 10);</code></td>
+</tr>
+
+<tr>
+<td colspan="3"><strong>📍 เดินตามเส้น</strong></td>
+</tr>
+<tr>
+<td><code>TracSpeedCM(speed, cm)</code></td>
+<td>เดินตามเส้นตามระยะ cm</td>
+<td><code>TracSpeedCM(50, 20);</code></td>
+</tr>
+<tr>
+<td><code>TracCM(cm)</code></td>
+<td>เดินตามเส้น (ใช้ BaseSpeed)</td>
+<td><code>TracCM(15);</code></td>
+</tr>
+<tr>
+<td><code>TracBackCM(speed, cm)</code></td>
+<td>ถอยหลังตามเส้นตามระยะ cm</td>
+<td><code>TracBackCM(40, 10);</code></td>
+</tr>
+
+<tr>
+<td colspan="3"><strong>🧭 หมุนตามองศา</strong></td>
+</tr>
+<tr>
+<td><code>TracDegreeSpeedCM(speed, deg)</code></td>
+<td>หมุนตามองศา (คำนวณจาก CM)</td>
+<td><code>TracDegreeSpeedCM(50, 90);</code></td>
+</tr>
+<tr>
+<td><code>TracDegreeSpeedBackCM(speed, deg)</code></td>
+<td>หมุนถอยหลังตามองศา</td>
+<td><code>TracDegreeSpeedBackCM(40, -90);</code></td>
+</tr>
+<tr>
+<td><code>SpinLeftCalc(speed, deg)</code></td>
+<td>หมุนซ้ายตามองศา (คำนวณ)</td>
+<td><code>SpinLeftCalc(50, 90);</code></td>
+</tr>
+<tr>
+<td><code>SpinRightCalc(speed, deg)</code></td>
+<td>หมุนขวาตามองศา (คำนวณ)</td>
+<td><code>SpinRightCalc(50, 90);</code></td>
+</tr>
+
+<tr>
+<td colspan="3"><strong>🔄 โค้ง/หมุนรอบล้อ</strong></td>
+</tr>
+<tr>
+<td><code>CurveLeftCM(speed, deg, radius)</code></td>
+<td>โค้งซ้ายตามรัศมี cm</td>
+<td><code>CurveLeftCM(50, 90, 15);</code></td>
+</tr>
+<tr>
+<td><code>CurveRightCM(speed, deg, radius)</code></td>
+<td>โค้งขวาตามรัศมี cm</td>
+<td><code>CurveRightCM(50, 90, 15);</code></td>
+</tr>
+<tr>
+<td><code>PivotLeftCM(speed, deg)</code></td>
+<td>หมุนรอบล้อซ้าย</td>
+<td><code>PivotLeftCM(50, 90);</code></td>
+</tr>
+<tr>
+<td><code>PivotRightCM(speed, deg)</code></td>
+<td>หมุนรอบล้อขวา</td>
+<td><code>PivotRightCM(50, 90);</code></td>
+</tr>
+
+</table>
+
+### 📝 คำสั่งย่อ CM
+
+| คำสั่งย่อ | ฟังก์ชันเต็ม | ตัวอย่าง |
+|-----------|--------------|----------|
+| `FCM(s,cm)` | ForwardCM | `FCM(50,15);` |
+| `BCM(s,cm)` | BackwardCM | `BCM(40,10);` |
+| `FCMS(s,cm,kp)` | ForwardCM + Gyro | `FCMS(50,30,0.5);` |
+| `TCM(cm)` | TracCM | `TCM(20);` |
+| `TSCM(s,cm)` | TracSpeedCM | `TSCM(50,15);` |
+| `TBCM(s,cm)` | TracBackCM | `TBCM(40,10);` |
+| `TDSCM(s,deg)` | TracDegreeSpeedCM | `TDSCM(50,90);` |
+| `TDSBCM(s,deg)` | TracDegreeSpeedBackCM | `TDSBCM(40,-90);` |
+| `SLC(s,deg)` | SpinLeftCalc | `SLC(50,90);` |
+| `SRC(s,deg)` | SpinRightCalc | `SRC(50,90);` |
+| `CLCM(s,d,r)` | CurveLeftCM | `CLCM(50,90,15);` |
+| `CRCM(s,d,r)` | CurveRightCM | `CRCM(50,90,15);` |
+| `PLCM(s,deg)` | PivotLeftCM | `PLCM(50,90);` |
+| `PRCM(s,deg)` | PivotRightCM | `PRCM(50,90);` |
+
+### 🔬 ฟังก์ชัน Calibration
+
+```cpp
+// ทดสอบ calibrate ค่า SPEED_TO_MMPS
+calibrateSpeedTest(50, 5000);  // วิ่งความเร็ว 50 เป็นเวลา 5 วินาที แล้ววัดระยะจริง
+
+// ทดสอบความแม่นยำ
+testForwardCM(50, 30);  // ทดสอบเดินหน้า 30 cm ที่ความเร็ว 50
+```
+
+**วิธี Calibrate:**
+1. รัน `calibrateSpeedTest(50, 5000);`
+2. วัดระยะทางจริงที่หุ่นยนต์เดิน (mm)
+3. คำนวณ: `SPEED_TO_MMPS = ระยะทาง_mm / (speed × เวลา_วินาที)`
+4. ใส่ค่าใหม่ลงในโค้ด
+
+### 💡 เมื่อไหร่ควรใช้ Gyro?
+
+| ระยะทาง | แนะนำ | เหตุผล |
+|---------|-------|--------|
+| < 20 cm | `ForwardCM(speed, cm)` ไม่ใช้ Gyro | ระยะสั้น ไม่ทันเบี่ยง |
+| 20-30 cm | เลือกได้ | ขึ้นกับพื้นผิว |
+| > 30 cm | `ForwardCM(speed, cm, kp)` ใช้ Gyro | ระยะยาว อาจเบี่ยงได้ |
+
+---
+
 ## ⚙️ การจูนค่า
 
 ### 🎯 PID คืออะไร?

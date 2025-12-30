@@ -499,15 +499,21 @@ unsigned long calculateTimeFromCM(float cm, int speed)
 }
 
 //-----------------------------------------------------------------------------
-// เดินหน้า (speed, cm) - ใช้ Gyro รักษาทิศ
+// เดินหน้า (speed, cm) - ไม่ใช้ Gyro (ใช้ offset อย่างเดียว)
 //-----------------------------------------------------------------------------
 void ForwardCM(int speed, float cm)
 {
-  ForwardCM(speed, cm, GYRO_KP);
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  setMotorOffset(speed);
+  int leftSpeed = speed - MOTOR_LEFT_OFFSET;
+  int rightSpeed = speed - MOTOR_RIGHT_OFFSET;
+  Motor(leftSpeed, rightSpeed);
+  delay(delayMs);
+  MotorBrake();
 }
 
 //-----------------------------------------------------------------------------
-// เดินหน้า (speed, cm, kp) - กำหนด Kp เอง
+// เดินหน้า (speed, cm, kp) - ใช้ Gyro รักษาทิศ (สำหรับระยะไกล)
 //-----------------------------------------------------------------------------
 void ForwardCM(int speed, float cm, float kp)
 {
@@ -516,15 +522,21 @@ void ForwardCM(int speed, float cm, float kp)
 }
 
 //-----------------------------------------------------------------------------
-// ถอยหลัง (speed, cm) - ใช้ Gyro รักษาทิศ
+// ถอยหลัง (speed, cm) - ไม่ใช้ Gyro (ใช้ offset อย่างเดียว)
 //-----------------------------------------------------------------------------
 void BackwardCM(int speed, float cm)
 {
-  BackwardCM(speed, cm, GYRO_KP);
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  setMotorOffset(speed);
+  int leftSpeed = -(speed - MOTOR_LEFT_OFFSET);
+  int rightSpeed = -(speed - MOTOR_RIGHT_OFFSET);
+  Motor(leftSpeed, rightSpeed);
+  delay(delayMs);
+  MotorBrake();
 }
 
 //-----------------------------------------------------------------------------
-// ถอยหลัง (speed, cm, kp) - กำหนด Kp เอง
+// ถอยหลัง (speed, cm, kp) - ใช้ Gyro รักษาทิศ (สำหรับระยะไกล)
 //-----------------------------------------------------------------------------
 void BackwardCM(int speed, float cm, float kp)
 {
