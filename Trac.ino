@@ -300,3 +300,78 @@ void setLinePID(float kp, float ki, float kd) {
 }
 
 void setKt(int kt) { Kt = kt; }
+
+// =============================================================================
+//  ฟังก์ชัน TracSpeedTime แบบ CM (เซนติเมตร)
+// =============================================================================
+/*
+ * เดินตามเส้นโดยกำหนดระยะทางเป็น cm
+ * ใช้สูตรเดียวกับ ForwardCM แต่เพิ่มการควบคุมด้วย Line Sensor
+ *
+ * ข้อดี:
+ * - แม่นยำกว่าการกำหนดเวลา
+ * - เดินตามเส้นไปด้วย
+ *
+ * ข้อควรระวัง:
+ * - ถ้าหลุดเส้น อาจเดินไม่ตรงทำให้ระยะคลาดเคลื่อน
+ */
+
+//-----------------------------------------------------------------------------
+// เดินตามเส้นตามระยะทาง CM
+//-----------------------------------------------------------------------------
+void TracSpeedCM(int TracSpeed, float cm)
+{
+  unsigned long TracTime = calculateTimeFromCM(cm, TracSpeed);
+  TracSpeedTime(TracSpeed, TracTime);
+}
+
+//-----------------------------------------------------------------------------
+// เดินตามเส้นตามระยะทาง CM (ใช้ BaseSpeed)
+//-----------------------------------------------------------------------------
+void TracCM(float cm)
+{
+  TracSpeedCM(BaseSpeed, cm);
+}
+
+//-----------------------------------------------------------------------------
+// เดินตามเส้นถอยหลังตามระยะทาง CM
+//-----------------------------------------------------------------------------
+void TracBackCM(int TracSpeed, float cm)
+{
+  unsigned long TracTime = calculateTimeFromCM(cm, TracSpeed);
+  int TempSpeed = BaseSpeed;
+  BaseSpeed = TracSpeed;
+  InitialSpeed();
+
+  StartTimer();
+  float error = error_B();
+  float _I = 0;
+  float _prevErr = 0;
+
+  while (ReadTimer() < TracTime)
+  {
+    float P = error;
+    _I += error * 0.00005;
+    _I = constrain(_I, -1000, 1000);
+    float D = error - _prevErr;
+    _prevErr = error;
+
+    float output = (LINE_KP * P) + (LINE_KI * _I) + (LINE_KD * D);
+    Motor(-(TracSpeed + output), -(TracSpeed - output));
+
+    delay(Kt);
+    error = error_B();
+  }
+
+  MotorStop();
+  BaseSpeed = TempSpeed;
+  InitialSpeed();
+}
+
+//-----------------------------------------------------------------------------
+// เดินตามเส้นถอยหลังตามระยะทาง CM (ใช้ BaseSpeed)
+//-----------------------------------------------------------------------------
+void TracBackCM(float cm)
+{
+  TracBackCM(BaseSpeed, cm);
+}

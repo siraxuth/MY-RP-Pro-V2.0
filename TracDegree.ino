@@ -381,3 +381,120 @@ void place_right_out(int speed, int degree, int brakeDelay)
   SpinLeft(speed, degree);
   delay(brakeDelay);
 }
+
+// =============================================================================
+//  ฟังก์ชัน TracDegree แบบ CM (เซนติเมตร)
+// =============================================================================
+/*
+ * เดินตรงด้วย Gyro โดยกำหนดระยะทางเป็น cm
+ *
+ * ข้อดี:
+ * - ไม่ต้องใช้เซ็นเซอร์เส้น
+ * - รักษาทิศทางด้วย Gyro
+ * - แม่นยำกว่าการกำหนดเวลา
+ *
+ * วิธีคำนวณ:
+ * - ใช้ calculateTimeFromCM() เหมือน ForwardCM
+ * - เพิ่มการควบคุมทิศด้วย Gyro
+ */
+
+//-----------------------------------------------------------------------------
+// เดินตรงด้วย Gyro ตามระยะทาง CM (speed, cm, degree, mode)
+//-----------------------------------------------------------------------------
+void TracDegreeSpeedCM(int speed, float cm, int degree, int mode)
+{
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  TracDegreeSpeedTime(speed, degree, delayMs, mode);
+}
+
+//-----------------------------------------------------------------------------
+// เดินตรงด้วย Gyro ตามระยะทาง CM (speed, cm) - degree=0, mode=0
+//-----------------------------------------------------------------------------
+void TracDegreeSpeedCM(int speed, float cm)
+{
+  TracDegreeSpeedCM(speed, cm, 0, 0);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลังด้วย Gyro ตามระยะทาง CM (speed, cm, degree, mode)
+//-----------------------------------------------------------------------------
+void TracDegreeSpeedBackCM(int speed, float cm, int degree, int mode)
+{
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  TracDegreeSpeedTimeBack(speed, degree, delayMs, mode);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลังด้วย Gyro ตามระยะทาง CM (speed, cm) - degree=0, mode=0
+//-----------------------------------------------------------------------------
+void TracDegreeSpeedBackCM(int speed, float cm)
+{
+  TracDegreeSpeedBackCM(speed, cm, 0, 0);
+}
+
+// =============================================================================
+//  ฟังก์ชัน Spin/Turn แบบคำนวณจาก Wheel Base
+// =============================================================================
+/*
+ * คำนวณระยะทางที่ล้อต้องหมุนเพื่อให้หุ่นหมุนตามองศาที่ต้องการ
+ *
+ * สูตร:
+ *   ระยะทางที่ล้อต้องหมุน = (องศา / 360) * π * WHEEL_BASE_MM
+ *
+ * ตัวอย่าง:
+ *   หมุน 90° ด้วย wheel base = 120mm
+ *   ระยะทาง = (90/360) * 3.14159 * 120 = 94.25mm ต่อล้อ
+ *
+ * ข้อดี:
+ *   - คำนวณจากค่าจริงของหุ่น
+ *   - สามารถปรับแก้ได้ง่าย
+ */
+
+//-----------------------------------------------------------------------------
+// คำนวณระยะทางที่ล้อต้องหมุนสำหรับการหมุนตัว
+//-----------------------------------------------------------------------------
+float calculateTurnDistance(float degrees)
+{
+  // ระยะทางที่ล้อแต่ละข้างต้องเคลื่อนที่ (mm)
+  // = (องศา / 360) * เส้นรอบวงของวงกลมที่หุ่นหมุน
+  // = (องศา / 360) * π * WHEEL_BASE_MM
+  float turn_distance_mm = (abs(degrees) / 360.0) * 3.14159265359 * WHEEL_BASE_MM;
+  return turn_distance_mm;
+}
+
+//-----------------------------------------------------------------------------
+// คำนวณเวลาสำหรับการหมุนตัว
+//-----------------------------------------------------------------------------
+unsigned long calculateTurnTime(float degrees, int speed)
+{
+  float distance_mm = calculateTurnDistance(degrees);
+  float velocity_mmps = (float)speed * SPEED_TO_MMPS;
+  float time_ms = (distance_mm / velocity_mmps) * 1000.0;
+
+  // ใช้ correction factor
+  time_ms = time_ms * CM_CORRECTION_FACTOR;
+
+  return (unsigned long)time_ms;
+}
+
+//-----------------------------------------------------------------------------
+// หมุนซ้ายตาม Wheel Base Calculation (ไม่ใช้ Gyro)
+//-----------------------------------------------------------------------------
+void SpinLeftCalc(int speed, float degrees)
+{
+  unsigned long turnTime = calculateTurnTime(degrees, speed);
+  Motor(-speed, speed);
+  delay(turnTime);
+  MotorBrake();
+}
+
+//-----------------------------------------------------------------------------
+// หมุนขวาตาม Wheel Base Calculation (ไม่ใช้ Gyro)
+//-----------------------------------------------------------------------------
+void SpinRightCalc(int speed, float degrees)
+{
+  unsigned long turnTime = calculateTurnTime(degrees, speed);
+  Motor(speed, -speed);
+  delay(turnTime);
+  MotorBrake();
+}

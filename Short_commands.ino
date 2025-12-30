@@ -684,3 +684,233 @@ void junctionPath() {
 }
 
 */
+
+// =============================================================================
+//  ฟังก์ชันย่อ - CM (เซนติเมตร)
+// =============================================================================
+/*
+ *  ตารางคำสั่งย่อ - CM (เดินหน้า/ถอยหลังตามระยะทาง)
+ *
+ *  | คำสั่งย่อ       | คำสั่งเต็ม                         | คำอธิบาย                         |
+ *  |----------------|-------------------------------------|----------------------------------|
+ *  | FCM(s,cm)      | ForwardCM(speed, cm)                | เดินหน้า cm                       |
+ *  | FCM(s,cm,kp)   | ForwardCM(speed, cm, kp)            | เดินหน้า cm (กำหนด Kp)            |
+ *  | BCM(s,cm)      | BackwardCM(speed, cm)               | ถอยหลัง cm                        |
+ *  | BCM(s,cm,kp)   | BackwardCM(speed, cm, kp)           | ถอยหลัง cm (กำหนด Kp)             |
+ *  | FCMS(s,cm)     | ForwardCMSmooth(speed, cm)          | เดินหน้า cm แบบ Smooth            |
+ *  | BCMS(s,cm)     | BackwardCMSmooth(speed, cm)         | ถอยหลัง cm แบบ Smooth             |
+ *  | TCM(cm)        | TracCM(cm)                          | เดินตามเส้น cm                    |
+ *  | TSCM(s,cm)     | TracSpeedCM(speed, cm)              | เดินตามเส้น cm (กำหนด speed)      |
+ *  | TBCM(s,cm)     | TracBackCM(speed, cm)               | ถอยตามเส้น cm                     |
+ *  | TDSCM(s,cm)    | TracDegreeSpeedCM(speed, cm)        | เดินตรง Gyro cm                   |
+ *  | TDSBCM(s,cm)   | TracDegreeSpeedBackCM(speed, cm)    | ถอยตรง Gyro cm                    |
+ *  | CLCM(s,d,r)    | CurveLeftCM(speed, degrees, radius) | โค้งซ้าย cm                       |
+ *  | CRCM(s,d,r)    | CurveRightCM(speed, degrees, radius)| โค้งขวา cm                        |
+ *  | SLC(s,d)       | SpinLeftCalc(speed, degrees)        | หมุนซ้าย (Calc)                   |
+ *  | SRC(s,d)       | SpinRightCalc(speed, degrees)       | หมุนขวา (Calc)                    |
+ *
+ * =============================================================================
+ */
+
+//-----------------------------------------------------------------------------
+// เดินหน้า CM
+//-----------------------------------------------------------------------------
+void FCM(int speed, float cm)
+{
+  ForwardCM(speed, cm);
+}
+
+void FCM(int speed, float cm, float kp)
+{
+  ForwardCM(speed, cm, kp);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลัง CM
+//-----------------------------------------------------------------------------
+void BCM(int speed, float cm)
+{
+  BackwardCM(speed, cm);
+}
+
+void BCM(int speed, float cm, float kp)
+{
+  BackwardCM(speed, cm, kp);
+}
+
+//-----------------------------------------------------------------------------
+// เดินหน้า CM แบบ Smooth
+//-----------------------------------------------------------------------------
+void FCMS(int speed, float cm)
+{
+  ForwardCMSmooth(speed, cm);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลัง CM แบบ Smooth
+//-----------------------------------------------------------------------------
+void BCMS(int speed, float cm)
+{
+  BackwardCMSmooth(speed, cm);
+}
+
+//-----------------------------------------------------------------------------
+// เดินตามเส้น CM
+//-----------------------------------------------------------------------------
+void TCM(float cm)
+{
+  TracCM(cm);
+}
+
+void TSCM(int speed, float cm)
+{
+  TracSpeedCM(speed, cm);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยตามเส้น CM
+//-----------------------------------------------------------------------------
+void TBCM(int speed, float cm)
+{
+  TracBackCM(speed, cm);
+}
+
+void TBCM(float cm)
+{
+  TracBackCM(cm);
+}
+
+//-----------------------------------------------------------------------------
+// เดินตรง Gyro CM
+//-----------------------------------------------------------------------------
+void TDSCM(int speed, float cm)
+{
+  TracDegreeSpeedCM(speed, cm);
+}
+
+void TDSCM(int speed, float cm, int degree, int mode)
+{
+  TracDegreeSpeedCM(speed, cm, degree, mode);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยตรง Gyro CM
+//-----------------------------------------------------------------------------
+void TDSBCM(int speed, float cm)
+{
+  TracDegreeSpeedBackCM(speed, cm);
+}
+
+void TDSBCM(int speed, float cm, int degree, int mode)
+{
+  TracDegreeSpeedBackCM(speed, cm, degree, mode);
+}
+
+//-----------------------------------------------------------------------------
+// โค้ง CM
+//-----------------------------------------------------------------------------
+void CLCM(int speed, float degrees, float radiusCM)
+{
+  CurveLeftCM(speed, degrees, radiusCM);
+}
+
+void CRCM(int speed, float degrees, float radiusCM)
+{
+  CurveRightCM(speed, degrees, radiusCM);
+}
+
+//-----------------------------------------------------------------------------
+// หมุนตัว Calc (ไม่ใช้ Gyro)
+//-----------------------------------------------------------------------------
+void SLC(int speed, float degrees)
+{
+  SpinLeftCalc(speed, degrees);
+}
+
+void SRC(int speed, float degrees)
+{
+  SpinRightCalc(speed, degrees);
+}
+
+//-----------------------------------------------------------------------------
+// Pivot Turn CM
+//-----------------------------------------------------------------------------
+void PLCM(int speed, float degrees)
+{
+  PivotLeftCM(speed, degrees);
+}
+
+void PRCM(int speed, float degrees)
+{
+  PivotRightCM(speed, degrees);
+}
+
+//=============================================================================
+// ตัวอย่างการใช้งาน CM
+//=============================================================================
+/*
+
+void setup() {
+  // ตั้งค่า Calibration (ต้องทำก่อนใช้งาน CM)
+  // วิธี Calibrate:
+  // 1. เรียก calibrateSpeedTest(50);
+  // 2. วัดระยะทางที่หุ่นเดินได้ (mm)
+  // 3. คำนวณ SPEED_TO_MMPS = ระยะทาง / speed
+  // 4. ตั้งค่าด้วย setSpeedCalibration(ค่าที่คำนวณได้);
+}
+
+void loop() {
+  // ========== ตัวอย่างที่ 1: เดินหน้า/ถอยหลังตาม CM ==========
+  FCM(50, 10);          // เดินหน้า 10 cm ความเร็ว 50
+  delay(500);
+  BCM(50, 5);           // ถอยหลัง 5 cm ความเร็ว 50
+
+  // ========== ตัวอย่างที่ 2: เดินหน้าแบบ Smooth ==========
+  FCMS(60, 20);         // เดินหน้า 20 cm แบบ Smooth
+
+  // ========== ตัวอย่างที่ 3: เดินตามเส้นตาม CM ==========
+  TCM(15);              // เดินตามเส้น 15 cm
+  TSCM(60, 25);         // เดินตามเส้น 25 cm ความเร็ว 60
+
+  // ========== ตัวอย่างที่ 4: เดินตรงด้วย Gyro ตาม CM ==========
+  TDSCM(50, 30);        // เดินตรง Gyro 30 cm
+  SL(50, 90);           // หมุนซ้าย 90°
+  TDSCM(50, 20);        // เดินตรง Gyro 20 cm
+
+  // ========== ตัวอย่างที่ 5: โค้งตาม CM ==========
+  CLCM(50, 90, 15);     // โค้งซ้าย 90° รัศมี 15 cm
+  FCM(50, 10);          // เดินหน้า 10 cm
+  CRCM(50, 90, 15);     // โค้งขวา 90° รัศมี 15 cm
+
+  // ========== ตัวอย่างที่ 6: หมุนตัวแบบ Calc ==========
+  SLC(50, 90);          // หมุนซ้าย 90° (ไม่ใช้ Gyro)
+  SRC(50, 45);          // หมุนขวา 45° (ไม่ใช้ Gyro)
+
+  // ========== ตัวอย่างที่ 7: เดินเป็นรูปสี่เหลี่ยม 20x20 cm ==========
+  for (int i = 0; i < 4; i++) {
+    FCM(50, 20);        // เดินหน้า 20 cm
+    SL(50, 90);         // หมุนซ้าย 90°
+  }
+
+  MS();
+  while(1);
+}
+
+// ตัวอย่าง: Calibration Routine
+void calibrationRoutine() {
+  Serial.println("=== CM Calibration Routine ===");
+  Serial.println("Step 1: Speed Test");
+  calibrateSpeedTest(50);
+
+  // หลังจากวัดระยะทางแล้ว:
+  // setSpeedCalibration(3.0);  // ค่าที่คำนวณได้
+
+  Serial.println("Step 2: Forward CM Test");
+  testForwardCM(50, 20);  // ทดสอบเดินหน้า 20 cm
+
+  // หลังจากวัดความคลาดเคลื่อน:
+  // setCMCorrection(1.05);  // ถ้าเดินได้น้อยกว่า
+  // setCMCorrection(0.95);  // ถ้าเดินได้มากกว่า
+}
+
+*/

@@ -445,3 +445,206 @@ void RobotStart()
 {
   ForwardSpeedTime(60, 200);
 }
+
+// =============================================================================
+//  ฟังก์ชันเดินหน้า/ถอยหลังแบบ CM (เซนติเมตร)
+// =============================================================================
+/*
+ * วิธีคำนวณที่แม่นยำที่สุด:
+ *
+ * 1. สูตรพื้นฐาน:
+ *    เวลา (ms) = ระยะทาง (mm) / ความเร็ว (mm/s)
+ *              = ระยะทาง (cm) * 10 / (speed * SPEED_TO_MMPS) * 1000
+ *              = ระยะทาง (cm) * 10000 / (speed * SPEED_TO_MMPS)
+ *
+ * 2. การ Calibrate ค่า SPEED_TO_MMPS:
+ *    - ให้หุ่นเดิน speed=50 เป็นเวลา 1000ms
+ *    - วัดระยะทางที่เดินได้ (mm)
+ *    - SPEED_TO_MMPS = ระยะทาง / speed
+ *
+ * 3. การ Fine-tune ด้วย CM_CORRECTION_FACTOR:
+ *    - ถ้าเดินได้น้อยกว่าที่กำหนด: เพิ่มค่า > 1.0
+ *    - ถ้าเดินได้มากกว่าที่กำหนด: ลดค่า < 1.0
+ *
+ * 4. ข้อควรระวัง:
+ *    - ต้องคำนึงถึงเวลาเบรค (BRAKE_TIME)
+ *    - ความเร็วต่ำจะแม่นยำกว่าความเร็วสูง
+ *    - พื้นผิวและแบตเตอรี่มีผลต่อความแม่นยำ
+ */
+
+//-----------------------------------------------------------------------------
+// คำนวณเวลาจากระยะทาง (CM)
+//-----------------------------------------------------------------------------
+unsigned long calculateTimeFromCM(float cm, int speed)
+{
+  // สูตร: เวลา (ms) = ระยะทาง (mm) / ความเร็ว (mm/ms)
+  // โดย ความเร็ว (mm/ms) = speed * SPEED_TO_MMPS / 1000
+
+  float distance_mm = cm * 10.0;                              // แปลง cm เป็น mm
+  float velocity_mmps = (float)speed * SPEED_TO_MMPS;         // mm/s
+  float time_ms = (distance_mm / velocity_mmps) * 1000.0;     // ms
+
+  // ใช้ correction factor
+  time_ms = time_ms * CM_CORRECTION_FACTOR;
+
+  // หักเวลาเบรค (ประมาณ 30% ของระยะเบรค)
+  // เพราะระหว่างเบรคหุ่นยังเคลื่อนที่อยู่
+  float brake_distance_compensation = BRAKE_TIME * 0.3;
+  if (time_ms > brake_distance_compensation)
+  {
+    time_ms -= brake_distance_compensation;
+  }
+
+  return (unsigned long)time_ms;
+}
+
+//-----------------------------------------------------------------------------
+// เดินหน้า (speed, cm) - ใช้ Gyro รักษาทิศ
+//-----------------------------------------------------------------------------
+void ForwardCM(int speed, float cm)
+{
+  ForwardCM(speed, cm, GYRO_KP);
+}
+
+//-----------------------------------------------------------------------------
+// เดินหน้า (speed, cm, kp) - กำหนด Kp เอง
+//-----------------------------------------------------------------------------
+void ForwardCM(int speed, float cm, float kp)
+{
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  Forward(speed, kp, delayMs);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลัง (speed, cm) - ใช้ Gyro รักษาทิศ
+//-----------------------------------------------------------------------------
+void BackwardCM(int speed, float cm)
+{
+  BackwardCM(speed, cm, GYRO_KP);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลัง (speed, cm, kp) - กำหนด Kp เอง
+//-----------------------------------------------------------------------------
+void BackwardCM(int speed, float cm, float kp)
+{
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  Backward(speed, kp, delayMs);
+}
+
+//-----------------------------------------------------------------------------
+// เดินหน้าแบบ Smooth Stop (speed, cm)
+//-----------------------------------------------------------------------------
+void ForwardCMSmooth(int speed, float cm)
+{
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  // หักเวลาสำหรับ smooth stop
+  unsigned long smoothTime = (speed / 5) * 20; // เวลาที่ใช้ในการ smooth stop
+  if (delayMs > smoothTime)
+  {
+    delayMs -= smoothTime;
+  }
+  ForwardSpeedTimeSmooth(speed, delayMs, 5, 20);
+}
+
+//-----------------------------------------------------------------------------
+// ถอยหลังแบบ Smooth Stop (speed, cm)
+//-----------------------------------------------------------------------------
+void BackwardCMSmooth(int speed, float cm)
+{
+  unsigned long delayMs = calculateTimeFromCM(cm, speed);
+  unsigned long smoothTime = (speed / 5) * 20;
+  if (delayMs > smoothTime)
+  {
+    delayMs -= smoothTime;
+  }
+  BackwardSpeedTimeSmooth(speed, delayMs, 5, 20);
+}
+
+// =============================================================================
+//  ฟังก์ชัน Calibration
+// =============================================================================
+
+//-----------------------------------------------------------------------------
+// ทดสอบ Calibration - เดินหน้า 1 วินาที
+//-----------------------------------------------------------------------------
+void calibrateSpeedTest(int speed)
+{
+  Serial.println("=== Speed Calibration Test ===");
+  Serial.print("Speed: ");
+  Serial.println(speed);
+  Serial.println("Running for 1000ms...");
+  Serial.println("Measure the distance traveled!");
+
+  delay(1000);
+  Forward(speed, GYRO_KP, 1000);
+
+  Serial.println("Done! Measure the distance in mm.");
+  Serial.println("Then calculate: SPEED_TO_MMPS = distance / speed");
+  Serial.print("Example: If distance = 150mm, SPEED_TO_MMPS = 150 / ");
+  Serial.print(speed);
+  Serial.print(" = ");
+  Serial.println(150.0 / speed);
+}
+
+//-----------------------------------------------------------------------------
+// ทดสอบความแม่นยำ CM
+//-----------------------------------------------------------------------------
+void testForwardCM(int speed, float cm)
+{
+  Serial.println("=== ForwardCM Test ===");
+  Serial.print("Speed: ");
+  Serial.print(speed);
+  Serial.print(", Target: ");
+  Serial.print(cm);
+  Serial.println(" cm");
+
+  unsigned long calcTime = calculateTimeFromCM(cm, speed);
+  Serial.print("Calculated time: ");
+  Serial.print(calcTime);
+  Serial.println(" ms");
+
+  delay(1000);
+  ForwardCM(speed, cm);
+
+  Serial.println("Done! Measure actual distance.");
+  Serial.print("If different from ");
+  Serial.print(cm);
+  Serial.println(" cm, adjust CM_CORRECTION_FACTOR");
+}
+
+//-----------------------------------------------------------------------------
+// ตั้งค่า Calibration
+//-----------------------------------------------------------------------------
+void setSpeedCalibration(float speedToMmps)
+{
+  SPEED_TO_MMPS = speedToMmps;
+  Serial.print("SPEED_TO_MMPS set to: ");
+  Serial.println(SPEED_TO_MMPS);
+}
+
+void setCMCorrection(float factor)
+{
+  CM_CORRECTION_FACTOR = factor;
+  Serial.print("CM_CORRECTION_FACTOR set to: ");
+  Serial.println(CM_CORRECTION_FACTOR);
+}
+
+void setWheelDiameter(float diameter_mm)
+{
+  WHEEL_DIAMETER_MM = diameter_mm;
+  WHEEL_CIRCUMFERENCE_MM = WHEEL_DIAMETER_MM * 3.14159265359;
+  Serial.print("Wheel diameter: ");
+  Serial.print(WHEEL_DIAMETER_MM);
+  Serial.print(" mm, Circumference: ");
+  Serial.print(WHEEL_CIRCUMFERENCE_MM);
+  Serial.println(" mm");
+}
+
+void setWheelBase(float base_mm)
+{
+  WHEEL_BASE_MM = base_mm;
+  Serial.print("Wheel base set to: ");
+  Serial.print(WHEEL_BASE_MM);
+  Serial.println(" mm");
+}

@@ -716,3 +716,219 @@ void setWheelDrive(int mode)
 {
   WheelDrive = mode; // 0 = 2WD, 1 = 4WD
 }
+
+// =============================================================================
+//  ฟังก์ชัน Turn แบบ CM (โค้งตามระยะทาง)
+// =============================================================================
+/*
+ * เลี้ยวโค้งโดยกำหนดรัศมีวงเลี้ยวและระยะทาง
+ *
+ * สูตรการคำนวณโค้ง:
+ * - ความยาวส่วนโค้ง = (มุม/360) * 2 * π * รัศมี
+ * - ความเร็วล้อใน = speed * (รัศมี - WHEEL_BASE/2) / รัศมี
+ * - ความเร็วล้อนอก = speed * (รัศมี + WHEEL_BASE/2) / รัศมี
+ *
+ * ข้อดี:
+ * - ควบคุมรัศมีวงเลี้ยวได้แม่นยำ
+ * - กำหนดระยะทางโค้งได้
+ */
+
+//-----------------------------------------------------------------------------
+// คำนวณความเร็วล้อสำหรับโค้ง
+//-----------------------------------------------------------------------------
+void calculateCurveSpeeds(int baseSpeed, float radiusCM, bool turnLeft, int &speedL, int &speedR)
+{
+  float radius_mm = radiusCM * 10.0;
+  float half_base = WHEEL_BASE_MM / 2.0;
+
+  if (turnLeft)
+  {
+    // เลี้ยวซ้าย: ล้อซ้ายเป็นล้อใน (เร็วน้อยกว่า)
+    speedL = (int)(baseSpeed * (radius_mm - half_base) / radius_mm);
+    speedR = (int)(baseSpeed * (radius_mm + half_base) / radius_mm);
+  }
+  else
+  {
+    // เลี้ยวขวา: ล้อขวาเป็นล้อใน (เร็วน้อยกว่า)
+    speedL = (int)(baseSpeed * (radius_mm + half_base) / radius_mm);
+    speedR = (int)(baseSpeed * (radius_mm - half_base) / radius_mm);
+  }
+
+  // Constrain speeds
+  speedL = constrain(speedL, -100, 100);
+  speedR = constrain(speedR, -100, 100);
+}
+
+//-----------------------------------------------------------------------------
+// คำนวณเวลาสำหรับโค้ง
+//-----------------------------------------------------------------------------
+unsigned long calculateCurveTime(float degrees, float radiusCM, int speed)
+{
+  // ความยาวส่วนโค้งที่จุดกึ่งกลางหุ่น
+  float radius_mm = radiusCM * 10.0;
+  float arc_length_mm = (abs(degrees) / 360.0) * 2.0 * 3.14159265359 * radius_mm;
+
+  // คำนวณเวลา
+  float velocity_mmps = (float)speed * SPEED_TO_MMPS;
+  float time_ms = (arc_length_mm / velocity_mmps) * 1000.0;
+
+  // ใช้ correction factor
+  time_ms = time_ms * CM_CORRECTION_FACTOR;
+
+  return (unsigned long)time_ms;
+}
+
+//-----------------------------------------------------------------------------
+// โค้งซ้าย (speed, degrees, radiusCM)
+//-----------------------------------------------------------------------------
+void CurveLeftCM(int speed, float degrees, float radiusCM)
+{
+  int speedL, speedR;
+  calculateCurveSpeeds(speed, radiusCM, true, speedL, speedR);
+  unsigned long curveTime = calculateCurveTime(degrees, radiusCM, speed);
+
+  Motor(speedL, speedR);
+  delay(curveTime);
+  MotorBrake();
+}
+
+//-----------------------------------------------------------------------------
+// โค้งขวา (speed, degrees, radiusCM)
+//-----------------------------------------------------------------------------
+void CurveRightCM(int speed, float degrees, float radiusCM)
+{
+  int speedL, speedR;
+  calculateCurveSpeeds(speed, radiusCM, false, speedL, speedR);
+  unsigned long curveTime = calculateCurveTime(degrees, radiusCM, speed);
+
+  Motor(speedL, speedR);
+  delay(curveTime);
+  MotorBrake();
+}
+
+//-----------------------------------------------------------------------------
+// โค้งซ้ายตามระยะทาง (speed, arcLengthCM, radiusCM)
+//-----------------------------------------------------------------------------
+void CurveLeftDistanceCM(int speed, float arcLengthCM, float radiusCM)
+{
+  // คำนวณมุมจากความยาวส่วนโค้ง
+  float arc_mm = arcLengthCM * 10.0;
+  float radius_mm = radiusCM * 10.0;
+  float degrees = (arc_mm / (2.0 * 3.14159265359 * radius_mm)) * 360.0;
+
+  CurveLeftCM(speed, degrees, radiusCM);
+}
+
+//-----------------------------------------------------------------------------
+// โค้งขวาตามระยะทาง (speed, arcLengthCM, radiusCM)
+//-----------------------------------------------------------------------------
+void CurveRightDistanceCM(int speed, float arcLengthCM, float radiusCM)
+{
+  float arc_mm = arcLengthCM * 10.0;
+  float radius_mm = radiusCM * 10.0;
+  float degrees = (arc_mm / (2.0 * 3.14159265359 * radius_mm)) * 360.0;
+
+  CurveRightCM(speed, degrees, radiusCM);
+}
+
+// =============================================================================
+//  ฟังก์ชัน Turn แบบ CM (Pivot Turn)
+// =============================================================================
+/*
+ * Pivot Turn คือการเลี้ยวโดยให้ล้อข้างหนึ่งหยุดนิ่ง
+ * รัศมีวงเลี้ยว = WHEEL_BASE_MM
+ *
+ * สูตร:
+ *   ระยะทางที่ล้อนอกต้องหมุน = (มุม/360) * 2 * π * WHEEL_BASE_MM
+ */
+
+//-----------------------------------------------------------------------------
+// Pivot Left CM (ล้อซ้ายหยุด ล้อขวาหมุน)
+//-----------------------------------------------------------------------------
+void PivotLeftCM(int speed, float degrees)
+{
+  float distance_mm = (abs(degrees) / 360.0) * 2.0 * 3.14159265359 * WHEEL_BASE_MM;
+  float velocity_mmps = (float)speed * SPEED_TO_MMPS;
+  unsigned long time_ms = (unsigned long)((distance_mm / velocity_mmps) * 1000.0 * CM_CORRECTION_FACTOR);
+
+  Motor(0, speed);
+  delay(time_ms);
+  MotorBrake();
+}
+
+//-----------------------------------------------------------------------------
+// Pivot Right CM (ล้อขวาหยุด ล้อซ้ายหมุน)
+//-----------------------------------------------------------------------------
+void PivotRightCM(int speed, float degrees)
+{
+  float distance_mm = (abs(degrees) / 360.0) * 2.0 * 3.14159265359 * WHEEL_BASE_MM;
+  float velocity_mmps = (float)speed * SPEED_TO_MMPS;
+  unsigned long time_ms = (unsigned long)((distance_mm / velocity_mmps) * 1000.0 * CM_CORRECTION_FACTOR);
+
+  Motor(speed, 0);
+  delay(time_ms);
+  MotorBrake();
+}
+
+// =============================================================================
+//  ฟังก์ชันทดสอบ CM
+// =============================================================================
+
+//-----------------------------------------------------------------------------
+// ทดสอบโค้ง
+//-----------------------------------------------------------------------------
+void testCurveCM(int speed, float degrees, float radiusCM)
+{
+  Serial.println("=== Curve CM Test ===");
+  Serial.print("Speed: ");
+  Serial.print(speed);
+  Serial.print(", Degrees: ");
+  Serial.print(degrees);
+  Serial.print(", Radius: ");
+  Serial.print(radiusCM);
+  Serial.println(" cm");
+
+  int speedL, speedR;
+  calculateCurveSpeeds(speed, radiusCM, true, speedL, speedR);
+  Serial.print("Left wheel speed: ");
+  Serial.print(speedL);
+  Serial.print(", Right wheel speed: ");
+  Serial.println(speedR);
+
+  unsigned long curveTime = calculateCurveTime(degrees, radiusCM, speed);
+  Serial.print("Calculated time: ");
+  Serial.print(curveTime);
+  Serial.println(" ms");
+
+  delay(1000);
+  CurveLeftCM(speed, degrees, radiusCM);
+
+  Serial.println("Done!");
+}
+
+//-----------------------------------------------------------------------------
+// ทดสอบ Spin จาก Wheel Base
+//-----------------------------------------------------------------------------
+void testSpinCalc(int speed, float degrees)
+{
+  Serial.println("=== Spin Calc Test ===");
+  Serial.print("Speed: ");
+  Serial.print(speed);
+  Serial.print(", Degrees: ");
+  Serial.println(degrees);
+
+  float distance = calculateTurnDistance(degrees);
+  Serial.print("Turn distance per wheel: ");
+  Serial.print(distance);
+  Serial.println(" mm");
+
+  unsigned long turnTime = calculateTurnTime(degrees, speed);
+  Serial.print("Calculated time: ");
+  Serial.print(turnTime);
+  Serial.println(" ms");
+
+  delay(1000);
+  SpinRightCalc(speed, degrees);
+
+  Serial.println("Done! Measure actual angle.");
+}

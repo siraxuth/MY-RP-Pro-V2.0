@@ -50,11 +50,49 @@ void beep_n(int n) {
 //  Button
 // =============================================================================
 
-void sw() {
-  while (digitalRead(BTN1) == HIGH) delay(10);
-  delay(200);
-  tone(BUZZER_PIN, 3000, 200);
-  delay(300);
+// void sw() {
+//   while (digitalRead(BTN1) == HIGH) delay(10);
+//   delay(200);
+//   tone(BUZZER_PIN, 3000, 200);
+//   delay(300);
+// }
+
+int sw()
+{
+  // รอให้กดปุ่ม
+  while (digitalRead(BTN1) == HIGH)
+    ;
+
+  unsigned long pressTime = millis();
+
+  // รอจนปล่อยปุ่ม
+  while (digitalRead(BTN1) == LOW)
+    ;
+
+  unsigned long releaseTime = millis();
+  unsigned long duration = releaseTime - pressTime;
+
+  delay(200); // debounce
+  tone(BUZZER_PIN, 3000, 100);
+
+  // คืนค่าเป็นชนิดของการกด
+  if (duration >= LONG_PRESS_TIME)
+  {
+    return 2; // กดยาว
+  }
+  else
+  {
+    return 1; // กดสั้น
+  }
+}
+
+void wait_sw()
+{
+  while (digitalRead(BTN1) == HIGH)
+    ;
+  while (digitalRead(BTN1) == LOW)
+    ;
+  delay(150);
 }
 
 void sw_led(char color) {
